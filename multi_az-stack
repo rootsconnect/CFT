@@ -36,7 +36,55 @@
             "Description" : "Prefix to help identify resources in this stack",
             "Type" : "String",
             "Default" : "test"
-        }
+        },
+
+    "DBName" : {
+      "Default": "secretserverdb",
+      "Description" : "database name",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+
+    "DBUser" : {
+      "NoEcho": "true",
+      "Description" : "database admin account username",
+      "Type": "String",
+      "MinLength": "1",
+      "MaxLength": "16",
+      "AllowedPattern" : "[a-zA-Z][a-zA-Z0-9]*",
+      "ConstraintDescription" : "must begin with a letter and contain only alphanumeric characters."
+    },
+
+    "DBPassword" : {
+      "NoEcho": "true",
+      "Description" : "database admin account password",
+      "Type": "String",
+      "MinLength": "8",
+      "MaxLength": "41",
+      "AllowedPattern" : "[a-zA-Z0-9]*",
+      "ConstraintDescription" : "must contain only alphanumeric characters."
+    },
+
+    "MultiAZDatabase": {
+      "Default": "false",
+      "Description" : "Create a Multi-AZ MySQL Amazon RDS database instance",
+      "Type": "String",
+      "AllowedValues" : [ "true", "false" ],
+      "ConstraintDescription" : "must be either true or false."
+    },
+	
+	"DBAllocatedStorage": {
+      "Default": "20",
+      "Description" : "The size of the database (Gb)",
+      "Type": "Number",
+      "MinValue": "20",
+      "MaxValue": "4096",
+      "ConstraintDescription" : "must be between 20 and 4096Gb."
+    }
+
     },
 	
 	
@@ -537,9 +585,69 @@
 				"SubnetId" : { "Ref" : "PrivateSubnet2" },
 				"NetworkAclId" : { "Ref" : "NetworkAcl" }
 			}
-		}	
+		},	
 		
+		"DBSecurityGroup":{  
+         "Type":"AWS::EC2::SecurityGroup",
+         "Properties":{  
+            "GroupDescription":"Allow incoming TCP/1433 traffic to database",
+            "SecurityGroupIngress":[  
+               {  
+                  "IpProtocol":"tcp",
+                  "FromPort":"1433",
+                  "ToPort":"1433",
+                  "CidrIp":"0.0.0.0/0"
+               }
+            ],
+			"VpcId":{ "Ref" : "VPC" }
+         }
+      "myDBSubnetGroup":{  
+      },
+         "Type":"AWS::RDS::DBSubnetGroup",
+         "Properties":{  
+            "DBSubnetGroupDescription":"description",
+            "SubnetIds":[  
+               { "Ref" : "PrivateSubnet1" },
+               { "Ref" : "PrivateSubnet2" }
+            ],
+            "Tags":[  
+               {  
+                  "Key":"Database",
+                  "Value":"SecretServer"
+               }
+            ]
+         }
+      },
 		
+		"DBInstance":{  
+         "Type":"AWS::RDS::DBInstance",
+         "Properties":{  
+            "DBInstanceIdentifier":{  
+               "Ref":"DBName"
+            },
+            "Engine":"sqlserver-ex",
+            "LicenseModel":"license-included",
+            "BackupRetentionPeriod":"7",
+            "StorageType":"gp2",
+            "Port":"1433",
+            "DBInstanceClass":"db.t2.micro",
+            "AllocatedStorage":{  
+               "Ref":"DBAllocatedStorage"
+            },
+            "MasterUsername":{  
+               "Ref":"DBUser"
+            },
+            "MasterUserPassword":{  
+               "Ref":"DBPassword"
+            },
+            "VPCSecurityGroups":[  
+               {"Ref":"DBSecurityGroup"}
+            ],
+            "DBSubnetGroupName":{  
+               "Ref":"myDBSubnetGroup"
+            }
+         }
+      }
 		
 	},
 	
